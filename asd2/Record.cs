@@ -10,5 +10,10 @@
             Data = data;
             Key = key;
         }
+
+        public override string ToString()
+        {
+            return Key.ToString();
+        }
     }
 }

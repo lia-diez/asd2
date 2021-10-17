@@ -1,7 +1,8 @@
 ﻿#nullable enable
 using System;
-using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 
 namespace asd2
 {
@@ -17,25 +18,56 @@ namespace asd2
 
         #region Search
 
-        public bool Search(int key, ref T result)
+        #region Searching for data
+
+        public T Search(int key, out Node<T> resultNode)
         {
-            return RecursiveSearch(key, Root, ref result);
+            resultNode = new();
+            T result = RecursiveSearch(key, Root, ref resultNode);
+            return result;
         }
 
-        private bool RecursiveSearch(int key, Node<T> current, ref T result)
+        private T RecursiveSearch(int key, Node<T> current, ref Node<T> resultNode)
         {
             int keyIndex = FindIndex(key, current);
             if (keyIndex < current.Records.Count && current.Records[keyIndex].Key == key)
             {
-                result = current.Records[keyIndex].Data;
-                return true;
+                resultNode = current;
+                return current.Records[keyIndex].Data;
             }
+
             if (!current.IsLeaf)
-                RecursiveSearch(key, current.Children[keyIndex], ref result);
+                RecursiveSearch(key, current.Children[keyIndex], ref resultNode);
             else
-                return false;
-            return true;
+                return default;
+            return default;
         }
+
+        #endregion
+
+        #region Searching for result node
+
+        public Node<T> Search(int key)
+        {
+            Node<T> result = RecursiveSearch(key, Root);
+            return result;
+        }
+        private Node<T> RecursiveSearch(int key, Node<T> current)
+        {
+            int keyIndex = FindIndex(key, current);
+            if (keyIndex < current.Records.Count && current.Records[keyIndex].Key == key)
+            {
+                return current;
+            }
+
+            if (!current.IsLeaf)
+                RecursiveSearch(key, current.Children[keyIndex]);
+            else
+                return null;
+            return null;
+        }
+
+        #endregion
 
         #endregion
 
@@ -61,6 +93,7 @@ namespace asd2
             }
             else
                 current.Records.Insert(FindIndex(newRecord.Key, current), newRecord);
+
             if (current.Records.Count == 2 * _limit - 1)
             {
                 Split(current);
@@ -71,8 +104,8 @@ namespace asd2
         {
             Record<T> middleRecord = current.Records[_limit - 1];
 
-            Node<T> left = new (current.Records.GetRange(0, _limit - 1), current.Parent);
-            Node<T> right = new (current.Records.GetRange(_limit, _limit - 1), current.Parent);
+            Node<T> left = new(current.Records.GetRange(0, _limit - 1), current.Parent);
+            Node<T> right = new(current.Records.GetRange(_limit, _limit - 1), current.Parent);
 
             if (!current.IsLeaf)
             {
@@ -100,6 +133,62 @@ namespace asd2
 
         #endregion
 
+        #region Output
+
+        public override string ToString()
+        {
+            StringBuilder output = new StringBuilder();
+            RecursiveOutput(ref output, Root, 0, false);
+            return output.ToString();
+        }
+
+        private void RecursiveOutput(ref StringBuilder current, Node<T> node, int depth, bool isLast)
+        {
+            current.Append(Multiply("│ ", depth) + (isLast ? "└─ " : "├─ ") +
+                           "(" + node + ")" + "\n");
+            if (!node.IsLeaf)
+            {
+                for (int i = 0; i < node.Children.Count; i++)
+                {
+                    RecursiveOutput(ref current, node.Children[i], depth + 1,
+                        i == node.Children.Count - 1 && node.Children[i].IsLeaf);
+                }
+            }
+        }
+
+        private static string Multiply(string str, int times) =>
+            string.Concat(Enumerable.Repeat(str, times));
+
+        #endregion
+
+        #region Delete
+
+        public bool Delete(int key)
+        {
+            Node<T> removedNode = Search(key);
+            if (removedNode.IsLeaf) 
+                DeleteLeaf(key, removedNode);
+            else
+                DeleteInside();
+            return true;
+        }
+
+        private void DeleteLeaf(int key, Node<T> removedNode)
+        {
+            if (removedNode.Records.Count > _limit - 1)
+            {
+                removedNode.Records.RemoveAt(FindIndex(key, removedNode));
+                return;
+            }
+            
+            int nodeIndex = FindIndex(key, removedNode.Parent);
+            
+        }
+        
+        private void DeleteInside(){}
+
+        #endregion
+        
         private int FindIndex(int key, Node<T> current)
         {
             int index;
