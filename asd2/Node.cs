@@ -24,6 +24,10 @@ namespace asd2
         
         public bool IsLeaf => Children.Count == 0;
         public Node<T> Parent;
+        public int Index => Parent.Children.IndexOf(this);
+        public Node<T> Left => Index > 0 ? Parent.Children[Index - 1] : null;
+        public Node<T> Right => Index < Parent.Children.Count-1 ? Parent.Children[Index + 1] : null;
+        
 
         public Node(List<Record<T>> records,Node<T> parent)
         {

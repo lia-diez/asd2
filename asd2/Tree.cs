@@ -20,27 +20,26 @@ namespace asd2
 
         #region Searching for data
 
-        public T Search(int key, out Node<T> resultNode)
+        public T SearchData(int key)
         {
-            resultNode = new();
-            T result = RecursiveSearch(key, Root, ref resultNode);
+            T result = RecursiveDataSearch(key, Root);
             return result;
         }
 
-        private T RecursiveSearch(int key, Node<T> current, ref Node<T> resultNode)
+        private T RecursiveDataSearch(int key, Node<T> current)
         {
+            T result;
             int keyIndex = FindIndex(key, current);
             if (keyIndex < current.Records.Count && current.Records[keyIndex].Key == key)
             {
-                resultNode = current;
                 return current.Records[keyIndex].Data;
             }
 
             if (!current.IsLeaf)
-                RecursiveSearch(key, current.Children[keyIndex], ref resultNode);
+                result = RecursiveDataSearch(key, current.Children[keyIndex]);
             else
                 return default;
-            return default;
+            return result;
         }
 
         #endregion
@@ -54,6 +53,7 @@ namespace asd2
         }
         private Node<T> RecursiveSearch(int key, Node<T> current)
         {
+            Node<T> result;
             int keyIndex = FindIndex(key, current);
             if (keyIndex < current.Records.Count && current.Records[keyIndex].Key == key)
             {
@@ -61,10 +61,10 @@ namespace asd2
             }
 
             if (!current.IsLeaf)
-                RecursiveSearch(key, current.Children[keyIndex]);
+                result = RecursiveSearch(key, current.Children[keyIndex]);
             else
                 return null;
-            return null;
+            return result;
         }
 
         #endregion
@@ -173,20 +173,55 @@ namespace asd2
             return true;
         }
 
-        private void DeleteLeaf(int key, Node<T> removedNode)
+        private void DeleteLeaf(int key, Node<T> current)
         {
-            if (removedNode.Records.Count > _limit - 1)
+            int removedKeyIndex = FindIndex(key, current);
+            
+            if (current.Records.Count > _limit - 1)
             {
-                removedNode.Records.RemoveAt(FindIndex(key, removedNode));
+                current.Records.RemoveAt(removedKeyIndex);
                 return;
             }
-            
-            int nodeIndex = FindIndex(key, removedNode.Parent);
-            
-        }
-        
-        private void DeleteInside(){}
 
+            Node<T> neighbour = new();
+            bool leftExists = current.Left != null;
+            if (leftExists && current.Left.Records.Count  > _limit - 1)
+                neighbour = current.Left;
+            else if (current.Right != null && current.Right.Records.Count  > _limit - 1)
+            {
+                neighbour = current.Right;
+                leftExists = false;
+            }
+            
+            if (neighbour.Records != null)
+            {
+                Record<T> parentRecord = current.Parent.Records[leftExists ? current.Index-1 : current.Index];
+                
+                current.Records.RemoveAt(removedKeyIndex);
+                current.Records.Insert(FindIndex(parentRecord.Key, current), parentRecord);
+                current.Parent.Records.Remove(parentRecord);
+
+                Record<T> neighbourRecord = neighbour.Records[leftExists ? ^1 : 0];
+                
+                current.Parent.Records.Insert(FindIndex(neighbourRecord.Key, current.Parent), neighbourRecord);
+                neighbour.Records.Remove(neighbourRecord);
+            }
+            else
+            {
+                neighbour = leftExists ? current.Left : current.Right;
+                current.Records.InsertRange(leftExists ?  0 : current.Records.Count, neighbour.Records);
+                
+                Record<T> parentRecord = current.Parent.Records[leftExists ? current.Index-1 : current.Index];
+                current.Parent.Children.Remove(neighbour);
+                current.Records.Insert(_limit - 1, parentRecord);
+                current.Parent.Records.Remove(parentRecord);
+                current.Records.RemoveAt(removedKeyIndex);
+
+            }
+        }
+
+        private void DeleteInside(){}
+        
         #endregion
         
         private int FindIndex(int key, Node<T> current)
